@@ -60,7 +60,7 @@
     <div class="icon">🚨</div>
     <h1>위험 신호 감지</h1>
     <p class="subtitle">Golden Time 긴급 알림</p>
-    <div class="status" id="status">청취 버튼을 눌러 실시간으로 확인하세요</div>
+    <div class="status" id="status">🔄 연결 중...</div>
     <div class="wave" id="wave">
         <span></span><span></span><span></span>
         <span></span><span></span>
@@ -78,6 +78,9 @@ const params   = new URLSearchParams(location.search);
 const channel  = params.get('channel');
 const tokenUrl = params.get('tokenUrl');
 
+// 페이지 열리면 자동 연결 시도
+window.onload = () => startListening();
+
 async function startListening() {
     const btn = document.getElementById('listenBtn');
     btn.disabled = true;
@@ -87,6 +90,7 @@ async function startListening() {
         const data = await res.json();
         const client = AgoraRTC.createClient({ mode:'rtc', codec:'vp8' });
         await client.join(data.appId, channel, data.token, 999);
+        setStatus('✅ 연결됨 — 소리를 기다리는 중...');
         client.on('user-published', async (user, type) => {
             await client.subscribe(user, type);
             if (type === 'audio') {
@@ -99,6 +103,8 @@ async function startListening() {
         client.on('user-unpublished', () => {
             setStatus('연결이 종료되었습니다.');
             document.getElementById('wave').classList.remove('active');
+            btn.disabled = false;
+            btn.textContent = '🎧 지금 바로 듣기';
         });
     } catch(e) {
         setStatus('연결 실패: ' + e.message);
