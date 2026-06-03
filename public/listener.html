@@ -78,39 +78,49 @@ const params   = new URLSearchParams(location.search);
 const channel  = params.get('channel');
 const tokenUrl = params.get('tokenUrl');
 
-// 페이지 열리면 자동 연결 시도
-window.onload = () => startListening();
+let client = null;
+let pendingAudioTrack = null;
 
-async function startListening() {
-    const btn = document.getElementById('listenBtn');
-    btn.disabled = true;
+window.onload = () => joinChannel();
+
+async function joinChannel() {
     setStatus('🔄 연결 중...');
     try {
         const res  = await fetch(`${tokenUrl}/api/token?channel=${channel}&uid=999`);
         const data = await res.json();
-        const client = AgoraRTC.createClient({ mode:'rtc', codec:'vp8' });
+        client = AgoraRTC.createClient({ mode:'rtc', codec:'vp8' });
         await client.join(data.appId, channel, data.token, 999);
-        setStatus('✅ 연결됨 — 소리를 기다리는 중...');
+        setStatus('✅ 연결됨 — 듣기 버튼을 눌러주세요');
+
         client.on('user-published', async (user, type) => {
             await client.subscribe(user, type);
             if (type === 'audio') {
-                user.audioTrack.play();
-                setStatus('🔴 실시간 청취 중');
-                document.getElementById('wave').classList.add('active');
-                btn.textContent = '청취 중...';
+                pendingAudioTrack = user.audioTrack;
+                setStatus('🔔 소리 수신 중 — 듣기 버튼을 누르세요');
             }
         });
         client.on('user-unpublished', () => {
             setStatus('연결이 종료되었습니다.');
             document.getElementById('wave').classList.remove('active');
-            btn.disabled = false;
-            btn.textContent = '🎧 지금 바로 듣기';
         });
     } catch(e) {
         setStatus('연결 실패: ' + e.message);
-        btn.disabled = false;
     }
 }
+
+function startListening() {
+    const btn = document.getElementById('listenBtn');
+    if (pendingAudioTrack) {
+        pendingAudioTrack.play();
+        setStatus('🔴 실시간 청취 중');
+        document.getElementById('wave').classList.add('active');
+        btn.textContent = '청취 중...';
+        btn.disabled = true;
+    } else {
+        setStatus('⏳ 아직 소리가 없습니다. 잠시 후 다시 누르세요.');
+    }
+}
+
 function setStatus(msg) {
     document.getElementById('status').textContent = msg;
 }
