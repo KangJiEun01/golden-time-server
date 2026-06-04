@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const { neon } = require('@neondatabase/serverless');
+const checkRateLimit = require('./rate-limit-check');
 
 module.exports = async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -10,7 +11,7 @@ module.exports = async function handler(req, res) {
 
     const { to, message, deviceId, token } = req.body;
 
-    // ── 토큰 검증 ──────────────────────────────────────
+    // ── 1. 토큰 검증 ──────────────────────────────────
     if (!deviceId || !token) {
         return res.status(401).json({ error: '인증 정보 없음' });
     }
@@ -25,6 +26,17 @@ module.exports = async function handler(req, res) {
         }
     } catch (err) {
         return res.status(500).json({ error: 'DB 오류: ' + err.message });
+    }
+
+    // ── 2. Rate Limiting ───────────────────────────────
+    try {
+        const allowed = await checkRateLimit(deviceId);
+        if (!allowed) {
+            return res.status(429).json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' });
+        }
+    } catch (err) {
+        console.error('Rate limit 오류:', err.message);
+        // Rate limit 오류 시 차단하지 않고 통과 (서비스 우선)
     }
     // ────────────────────────────────────────────────────
 
