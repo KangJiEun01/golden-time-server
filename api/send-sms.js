@@ -9,6 +9,12 @@ module.exports = async function handler(req, res) {
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).end();
 
+    // ── 0. Kill Switch ─────────────────────────────────
+    if (process.env.KILL_SWITCH === 'true') {
+        return res.status(503).json({ error: '서비스가 일시 중단되었습니다.' });
+    }
+    // ────────────────────────────────────────────────────
+
     const { to, message, deviceId, token } = req.body;
 
     // ── 1. 토큰 검증 ──────────────────────────────────
@@ -36,7 +42,6 @@ module.exports = async function handler(req, res) {
         }
     } catch (err) {
         console.error('Rate limit 오류:', err.message);
-        // Rate limit 오류 시 차단하지 않고 통과 (서비스 우선)
     }
     // ────────────────────────────────────────────────────
 
