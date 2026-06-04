@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { neon } = require('@neondatabase/serverless');
 
 module.exports = async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -7,7 +8,25 @@ module.exports = async function handler(req, res) {
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).end();
 
-    const { to, message } = req.body;
+    const { to, message, deviceId, token } = req.body;
+
+    // ── 토큰 검증 ──────────────────────────────────────
+    if (!deviceId || !token) {
+        return res.status(401).json({ error: '인증 정보 없음' });
+    }
+    try {
+        const sql = neon(process.env.DATABASE_URL);
+        const rows = await sql`
+            SELECT token FROM device_tokens
+            WHERE device_id = ${deviceId}
+        `;
+        if (rows.length === 0 || rows[0].token !== token) {
+            return res.status(403).json({ error: '유효하지 않은 토큰' });
+        }
+    } catch (err) {
+        return res.status(500).json({ error: 'DB 오류: ' + err.message });
+    }
+    // ────────────────────────────────────────────────────
 
     const apiKey    = 'NCSM6LSQSH1TICTC';
     const apiSecret = '0IRIMBRIPAHVCHI1YA06YKL9WIGHTRUQ';
