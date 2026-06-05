@@ -1,5 +1,6 @@
-import { kv } from '@vercel/kv';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+
+const store: Record<string, number> = {};
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== 'POST') return res.status(405).end();
@@ -8,7 +9,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!userId) return res.status(400).json({ error: 'userId required' });
 
     const now = Date.now();
-    await kv.set(`heartbeat:${userId}`, now, { ex: 600 });
+    store[userId] = now;
 
     return res.status(200).json({ ok: true, timestamp: now });
 }
