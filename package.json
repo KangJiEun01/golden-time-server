@@ -12,6 +12,7 @@
   "type": "commonjs",
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
+    "@vercel/kv": "^3.0.0",
     "agora-token": "^2.0.5"
   }
 }
