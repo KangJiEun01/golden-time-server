@@ -4,12 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Golden Time - 실시간 위치</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: -apple-system, sans-serif; background: #111; color: white; }
-  #map { width: 100vw; height: 60vh; }
-  .info { padding: 20px; }
-  .status { font-size: 14px; color: #ff3b30; font-weight: bold; margin-bottom: 8px; }
+  #map { width: 100vw; height: 70vh; }
+  .info { padding: 16px 20px; }
+  .status { font-size: 14px; color: #ff3b30; font-weight: bold; margin-bottom: 6px; }
   .time { font-size: 13px; color: #888; }
   .pulse { display: inline-block; width: 10px; height: 10px; border-radius: 50%;
            background: #ff3b30; margin-right: 6px;
@@ -28,20 +29,23 @@
   <div class="time" id="updateTime">위치 불러오는 중...</div>
 </div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const userId = new URLSearchParams(location.search).get('userId');
-let map, marker;
+const map = L.map('map').setView([37.5665, 126.9780], 16);
 
-function initMap() {
-  map = new google.maps.Map(document.getElementById('map'), {
-    zoom: 16,
-    center: { lat: 37.5665, lng: 126.9780 },
-    styles: [{ elementType: 'geometry', stylers: [{ color: '#1a1a2e' }] },
-             { elementType: 'labels.text.fill', stylers: [{ color: '#ffffff' }] }]
-  });
-  fetchLocation();
-  setInterval(fetchLocation, 10000); // 10초마다 갱신
-}
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap'
+}).addTo(map);
+
+const icon = L.divIcon({
+  html: '<div style="width:20px;height:20px;border-radius:50%;background:#ff3b30;border:3px solid white;box-shadow:0 0 10px rgba(255,59,48,0.8)"></div>',
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
+  className: ''
+});
+
+let marker = null;
 
 async function fetchLocation() {
   if (!userId) {
@@ -52,16 +56,11 @@ async function fetchLocation() {
     const res = await fetch(`/api/location?userId=${userId}`);
     const data = await res.json();
     if (data.lat && data.lng) {
-      const pos = { lat: data.lat, lng: data.lng };
+      const pos = [data.lat, data.lng];
       if (!marker) {
-        marker = new google.maps.Marker({
-          position: pos, map,
-          icon: { path: google.maps.SymbolPath.CIRCLE,
-                  scale: 12, fillColor: '#ff3b30',
-                  fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 }
-        });
+        marker = L.marker(pos, { icon }).addTo(map);
       } else {
-        marker.setPosition(pos);
+        marker.setLatLng(pos);
       }
       map.panTo(pos);
       const t = new Date(data.updated_at);
@@ -72,7 +71,9 @@ async function fetchLocation() {
     document.getElementById('updateTime').textContent = '위치 불러오기 실패';
   }
 }
+
+fetchLocation();
+setInterval(fetchLocation, 10000);
 </script>
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD-placeholder&callback=initMap" async defer></script>
 </body>
 </html>
