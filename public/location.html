@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Golden Time - 실시간 위치</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, sans-serif; background: #111; color: white; }
+  #map { width: 100vw; height: 60vh; }
+  .info { padding: 20px; }
+  .status { font-size: 14px; color: #ff3b30; font-weight: bold; margin-bottom: 8px; }
+  .time { font-size: 13px; color: #888; }
+  .pulse { display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+           background: #ff3b30; margin-right: 6px;
+           animation: pulse 1s infinite; }
+  @keyframes pulse {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(1.3); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="info">
+  <div class="status"><span class="pulse"></span>실시간 위치 추적 중</div>
+  <div class="time" id="updateTime">위치 불러오는 중...</div>
+</div>
+
+<script>
+const userId = new URLSearchParams(location.search).get('userId');
+let map, marker;
+
+function initMap() {
+  map = new google.maps.Map(document.getElementById('map'), {
+    zoom: 16,
+    center: { lat: 37.5665, lng: 126.9780 },
+    styles: [{ elementType: 'geometry', stylers: [{ color: '#1a1a2e' }] },
+             { elementType: 'labels.text.fill', stylers: [{ color: '#ffffff' }] }]
+  });
+  fetchLocation();
+  setInterval(fetchLocation, 10000); // 10초마다 갱신
+}
+
+async function fetchLocation() {
+  if (!userId) {
+    document.getElementById('updateTime').textContent = 'userId가 없습니다';
+    return;
+  }
+  try {
+    const res = await fetch(`/api/location?userId=${userId}`);
+    const data = await res.json();
+    if (data.lat && data.lng) {
+      const pos = { lat: data.lat, lng: data.lng };
+      if (!marker) {
+        marker = new google.maps.Marker({
+          position: pos, map,
+          icon: { path: google.maps.SymbolPath.CIRCLE,
+                  scale: 12, fillColor: '#ff3b30',
+                  fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 }
+        });
+      } else {
+        marker.setPosition(pos);
+      }
+      map.panTo(pos);
+      const t = new Date(data.updated_at);
+      document.getElementById('updateTime').textContent =
+        `마지막 업데이트: ${t.toLocaleTimeString('ko-KR')}`;
+    }
+  } catch(e) {
+    document.getElementById('updateTime').textContent = '위치 불러오기 실패';
+  }
+}
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD-placeholder&callback=initMap" async defer></script>
+</body>
+</html>
